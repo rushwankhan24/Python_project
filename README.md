@@ -1,58 +1,68 @@
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
 
-def demographic_data_analyzer():
-    # Read data from the specified file path
-    df = pd.read_csv('/Users/AdnanKhan/Downloads/demographic_data.csv')
 
-    # How many of each race are represented in this dataset? 
-    race_count = df['race'].value_counts()
+# Import data
+df = pd.read_csv("medical_examination.csv")
 
-    # What is the average age of men?
-    average_age_men = round(df[df['sex'] == 'Male']['age'].mean(), 1)
+# Add 'overweight' column
+df['overweight'] = np.where((df['weight'] / np.square(df['height']/100))> 25, 1,0)
 
-    # What is the percentage of people who have a Bachelor's degree?
-    percentage_bachelors = round((df[df['education'] == 'Bachelors'].shape[0] / df.shape[0]) * 100, 1)
+# Normalize data by making 0 always good and 1 always bad. If the value of 'cholesterol' or 'gluc' is 1, make the value 0. If the value is more than 1, make the value 1.
+df['cholesterol'] = np.where(df['cholesterol'] == 1, 0 , 1)
+df['gluc'] = np.where(df['gluc'] == 1, 0 , 1)
 
-    # What percentage of people with advanced education (Bachelors, Masters, or Doctorate) make more than 50K?
-    higher_education = df[df['education'].isin(['Bachelors', 'Masters', 'Doctorate'])]
-    higher_education_rich = round((higher_education[higher_education['salary'] == '>50K'].shape[0] / higher_education.shape[0]) * 100, 1)
+# Draw Categorical Plot
+def draw_cat_plot():
+    # Create DataFrame for cat plot using `pd.melt` using just the values from 'cholesterol', 'gluc', 'smoke', 'alco', 'active', and 'overweight'.
+    df_cat = pd.melt(df, id_vars=["cardio"], value_vars=['active', 'alco', "cholesterol" , 'gluc', 'overweight', 'smoke'])
 
-    # What percentage of people without advanced education make more than 50K?
-    lower_education = df[~df['education'].isin(['Bachelors', 'Masters', 'Doctorate'])]
-    lower_education_rich = round((lower_education[lower_education['salary'] == '>50K'].shape[0] / lower_education.shape[0]) * 100, 1)
 
-    # What is the minimum number of hours a person works per week?
-    min_work_hours = df['hours-per-week'].min()
+    # Group and reformat the data to split it by 'cardio'. Show the counts of each feature. You will have to rename one of the columns for the catplot to work correctly.
+    # Draw the catplot with 'sns.catplot()'
+    figure = sns.catplot(x= "variable", kind ="count" ,hue = "value", data = df_cat, col= "cardio")
 
-    # What percentage of the people who work the minimum number of hours per week have a salary of more than 50K?
-    num_min_workers = df[df['hours-per-week'] == min_work_hours]
-    rich_percentage = round((num_min_workers[num_min_workers['salary'] == '>50K'].shape[0] / num_min_workers.shape[0]) * 100, 1)
+    figure.set_axis_labels("variable", "total")  
 
-    # What country has the highest percentage of people that earn >50K and what is that percentage?
-    country_salary = df[df['salary'] == '>50K']['native-country'].value_counts() / df['native-country'].value_counts() * 100
-    country_salary = country_salary.dropna()  # Remove any-NA values
-    highest_earning_country = country_salary.idxmax()
-    highest_earning_country_percentage = round(country_salary.max(), 1)
+    # Get the figure for the output
+    fig = figure#.fig
 
-    # Identify the most popular occupation for those who earn >50K in India.
-    india_occupation_counts = df[(df['native-country'] == 'India') & (df['salary'] == '>50K')]['occupation'].value_counts()
-    top_in_occupation = india_occupation_counts.idxmax() if not india_occupation_counts.empty else None
+    # Do not modify the next two lines
+    fig.savefig('catplot.png')
+    return fig
 
-    return {
-        'race_count': race_count,
-        'average_age_men': average_age_men,
-        'percentage_bachelors': percentage_bachelors,
-        'higher_education_rich': higher_education_rich,
-        'lower_education_rich': lower_education_rich,
-        'min_work_hours': min_work_hours,
-        'rich_percentage': rich_percentage,
-        'highest_earning_country': highest_earning_country,
-        'highest_earning_country_percentage': highest_earning_country_percentage,
-        'top_in_occupation': top_in_occupation
-    }
 
-# Example usage
-if __name__ == "__main__":
-    results = demographic_data_analyzer()
-    for key, value in results.items():
-        print(f"{key}: {value}")
+# Draw Heat Map
+def draw_heat_map():
+    # Clean the data
+    df_heat = df[
+         (df['ap_lo'] <= df['ap_hi']) & 
+         (df['height'] >= df['height'].quantile(0.025)) & 
+         (df['height'] <= df['height'].quantile(0.975)) &
+         (df['weight'] >= df['weight'].quantile(0.025)) & 
+         (df['weight'] <= df['weight'].quantile(0.975))]
+    
+    # Calculate the correlation matrix
+    corr = df_heat.corr()
+    # Generate a mask for the upper triangle
+    mask = np.triu(np.ones_like(corr, dtype= bool))
+
+
+
+    # Set up the matplotlib figure
+    fig, ax = plt.subplots(figsize = (12,12))
+
+    # Draw the heatmap with 'sns.heatmap()'
+    
+    sns.heatmap(corr, vmin=0, vmax= 0.25, fmt='.1f', linewidth = 1, annot = True, square = True, mask=mask, cbar_kws = {'shrink':.82})
+
+
+
+    # Do not modify the next two lines
+    fig.savefig('heatmap.png')
+    return fig
+
+draw_heat_map()
+draw_cat_plot()
