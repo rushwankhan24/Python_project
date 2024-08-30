@@ -1,76 +1,41 @@
-import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
-from pandas.plotting import register_matplotlib_converters
-register_matplotlib_converters()
+import matplotlib.pyplot as plt
+from scipy.stats import linregress
 
-# Import data (Make sure to parse dates. Consider setting index column to 'date'.)
-df = pd.read_csv('fcc-forum-pageviews.csv', index_col="date", parse_dates=True)
+def draw_plot():
+    # Read data from file
+    df = pd.read_csv("epa-sea-level.csv")
 
-# Clean data
+    # Create scatter plot
+    x = df["Year"]
+    y = df["CSIRO Adjusted Sea Level"]
 
-df = df.loc[(df['value'] >= df['value'].quantile(0.025)) & (df['value'] <= df['value'].quantile(0.975))]
+    fig, ax = plt.subplots(figsize=(12,12))
+    ax = plt.scatter(x, y)
 
+    # Create first line of best fit
+    res = linregress(x,y)
+    print(res)
+    x_forcast= pd.Series(([i for i in range(1850, 2051)]))
+    y_forcast = res.slope*x_forcast + res.intercept
+    plt.plot(x_forcast, y_forcast, 'r-')
 
-def draw_line_plot():
-    
-    # Draw line plot
-    fig, ax = plt.subplots(figsize=(32, 10), dpi=100)
-    
-    ax.set_title("Daily freeCodeCamp Forum Page Views 5/2016-12/2019")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Page Views")
-    sns.lineplot(data=df, legend=False, palette=['r'])
+    df_forc = df.loc[df["Year"] >= 2000]
+    new_x = df_forc["Year"]
+    new_y = df_forc["CSIRO Adjusted Sea Level"]
 
+    # Create second line of best fit
+    new_res = linregress(new_x, new_y)
+    new_x_forcast= pd.Series(([i for i in range(2000, 2051)]))
+    new_y_forcast = new_res.slope*new_x_forcast + new_res.intercept
+    plt.plot(new_x_forcast, new_y_forcast, 'orange')
 
-    # Save image and return fig (don't change this part)
-    fig.savefig('line_plot.png')
-    return fig
+    #Add labels and title
+    plt.title("Rise in Sea Level")
+    plt.xlabel("Year")
+    plt.ylabel("Sea Level (inches)")
 
-def draw_bar_plot():
-    # Copy and modify data for monthly bar plot
-    df_bar = df.copy()
-    df_bar['year'] = df_bar.index.year
-    df_bar['month'] = df_bar.index.month
-    
-    df_bar = df_bar.groupby(['year','month'])['value'].mean()
-    
-    df_bar = df_bar.unstack()
-    df_bar.columns = ['January','February','March','April','May','June','July','August','September','October','November','December']
-    
-    # Draw bar plot
-    fig = df_bar.plot(kind = 'bar', figsize = (15,10)).figure
-  
-    plt.xlabel('Years', fontsize = 15)
-    plt.ylabel('Average Page Views', fontsize = 15)
-    plt.legend(loc = 'upper left', title = 'Months', fontsize = 13)
-
-
-    # Save image and return fig (don't change this part)
-    fig.savefig('bar_plot.png')
-    return fig
-
-
-def draw_box_plot():
-    # Prepare data for box plots (this part is done!)
-    df_box = df.copy()
-    df_box.reset_index(inplace=True)
-    df_box['year'] = [d.year for d in df_box.date]
-    df_box['month'] = [d.strftime('%b') for d in df_box.date]
-
-    # Draw box plots (using Seaborn)
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize = (16, 8))
-    sns.boxplot(data = df_box, ax = ax1, x = "year", y = "value")
-    ax1.set_title("Year-wise Box Plot (Trend)")
-    ax1.set_xlabel("Year")
-    ax1.set_ylabel("Page Views")
-                   
-    sns.boxplot(data = df_box, ax = ax2, x = "month", y = "value")
-    ax2.set_title("Month-wise Box Plot (Seasonality)")
-    ax2.set_xlabel("Month")
-    ax2.set_ylabel("Page Views")
-
-
-    # Save image and return fig (don't change this part)
-    fig.savefig('box_plot.png')
-    return fig
+    # Save plot and return data for testing (DO NOT MODIFY)
+    plt.savefig('sea_level_plot.png')
+    return plt.gca()
+draw_plot()
